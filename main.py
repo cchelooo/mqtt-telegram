@@ -1,32 +1,43 @@
-# main.py  (Publisher)
 import time as ti
 import random as Ra
 import paho.mqtt.publish as MyPub
 
-BROKER_HOST = "127.0.0.1"     # Mosquitto local
-TOP_MP = "DATA/MP"            # MP01, MP2.5, MP10
-TOP_MA = "DATA/MA"            # Temperatura, HR
+# URL del broker MQTT (Mosquitto local)
+MQTT_HOST = '127.0.0.1'
 
-def get_mp():
-    # Material particulado simulado (ajusta rangos si quieres)
-    mp01 = Ra.randint(0, 40)      # MP 0-1um
-    mp25 = Ra.randint(10, 50)     # MP 2.5um
-    mp10 = Ra.randint(10, 50)     # MP 10um
-    return f"{mp01},{mp25},{mp10}"
+# Topicos usados por los clientes suscriptores
+TOPICS = ['DATA/MP', 'DATA/MA']  # MP = Material Particulado / MA = Medio Ambiente
 
-def get_ma():
-    # Medio ambiente simulado
-    te  = Ra.randint(10, 30)      # Temperatura
-    hr  = Ra.randint(40, 90)      # Humedad Relativa
-    return f"{te},{hr}"
+# -------------------------------------------------------------
+# Funciones de generacion de datos simulados
+# -------------------------------------------------------------
+def Get_MP():
+    """Material particulado (3 valores)"""
+    nMP01 = Ra.randint(0, 10)   # MP 01 um
+    nMP25 = Ra.randint(10, 50)  # MP 25 um
+    nMP10 = Ra.randint(10, 50)  # MP 10 um
+    return f"{nMP01},{nMP25},{nMP10}"
 
+def Get_MA():
+    """Medio ambiente (2 valores)"""
+    nTe  = Ra.randint(10, 22)   # Temperatura °C
+    nHr  = Ra.randint(60, 85)   # Humedad relativa %
+    return f"{nTe},{nHr}"
+
+# -------------------------------------------------------------
+# Bucle principal de publicacion
+# -------------------------------------------------------------
 if __name__ == "__main__":
-    print("Publisher iniciado. Enviando a DATA/MP y DATA/MA cada 5s...")
     while True:
-        mp_payload = get_mp()
-        ma_payload = get_ma()
-        # Publica a ambos tópicos
-        MyPub.single(TOP_MP, mp_payload, hostname=BROKER_HOST)
-        MyPub.single(TOP_MA, ma_payload, hostname=BROKER_HOST)
-        print("TX:", TOP_MP, mp_payload, "|", TOP_MA, ma_payload)
-        ti.sleep(5)  # cada 5 segundos
+        # Mensajes generados
+        msg_mp = Get_MP()
+        msg_ma = Get_MA()
+
+        # Publicacion a ambos topicos (para acelerar pruebas)
+        MyPub.single(TOPICS[0], msg_mp, hostname=MQTT_HOST)
+        MyPub.single(TOPICS[1], msg_ma, hostname=MQTT_HOST)
+
+        # Mostrar por consola
+        print(f"TX: {TOPICS[0]} {msg_mp} | {TOPICS[1]} {msg_ma}")
+
+        ti.sleep(5)  # Publica cada 5 segundos

@@ -18,6 +18,11 @@ from dotenv import load_dotenv
 cwd_env = Path.cwd() / ".env"
 script_env = Path(__file__).parent / ".env"
 
+# Contadores para saber cuántos mensajes válidos han llegado por tópico
+COUNT_MP = 0
+COUNT_MA = 0
+LAST_SENT_PAIR = -1  # último "par" (min) usado para enviar
+
 # Modo verbose para diagnosticar qué .env se cargó
 def _load_envs():
     loaded = []
@@ -86,6 +91,8 @@ def on_connect(client, userdata, flags, reason_code, properties=None):
         print("Suscrito a", t)
 
 def on_message(client, userdata, msg):
+    global COUNT_MP, COUNT_MA, LAST_SENT_PAIR
+
     payload = msg.payload.decode(errors="ignore").strip()
     try:
         if msg.topic == "DATA/MP":
@@ -97,6 +104,8 @@ def on_message(client, userdata, msg):
                 hist_mp25.append(mp25)
                 hist_mp10.append(mp10)
 
+                COUNT_MP += 1
+
         elif msg.topic == "DATA/MA":
             # Esperado: "temp,hr"
             parts = [p.strip() for p in payload.split(",")]
@@ -104,12 +113,17 @@ def on_message(client, userdata, msg):
                 temp, hr = map(float, parts[:2])
                 hist_temp.append(temp)
                 hist_hr.append(hr)
+                
+                COUNT_MA += 1
 
         # Cuando tengamos 10 de cada uno, graficamos y enviamos
         if ready() and BOT_TOKEN and CHAT_ID:
-            path = make_plot()
-            send_telegram_photo(path)
-            print("Reporte enviado a Telegram.")
+            pairs = min(COUNT_MP, COUNT_MA)
+            if pairs >= 10 and pairs % 10 == 0 and pairs != LAST_SENT_PAIR:
+                path = make_plot()
+                send_telegram_photo(path)
+                print("Reporte enviado a Telegram.")
+                LAST_SENT_PAIR = pairs
 
     except Exception as e:
         print("Error procesando mensaje:", e, "payload=", payload)
